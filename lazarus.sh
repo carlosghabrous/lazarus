@@ -34,7 +34,7 @@ function load_session() {
 
     printf "%s\n" "loading session $1"
     tmux start-server
-
+    tmux new-session -s $1
 }
 
 
@@ -43,9 +43,17 @@ function dump_session() {
     tmux list-panes -s -t $1
 }
 
+
 function list_current() {
     log "INFO" "Current sessions..."
-    printf "\t%s\n" "$(tmux list-sessions)"
+    sessions=$(tmux list-sessions)
+    IFS=$'\n'
+    read -rd '' -a ARR <<< "$sessions"
+    IFS=" "
+    for i in "${ARR[@]}"
+    do
+        printf "\t%s %s\n" "->" "$i"
+    done
 }
 
 
@@ -71,7 +79,7 @@ function list_stored () {
 function save() {
     if ! session_exists $1; then
         log "ERROR" "Session $1 does not exist!"
-        list_existing_sessions
+        list_current
         exit 2
     fi
 
