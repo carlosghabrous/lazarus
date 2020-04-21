@@ -3,20 +3,41 @@
 LAZARUS_DIR=".lazarus"
 
 # FUNCTIONS
-usage() {
+function log() {
+    printf "%s: %s\n" "$1" "$2"
+}
+
+
+function usage() {
     printf "%s\n" "Usage:"
     printf "\t%s\n" "lazarus <list|save|restore> [session_name]"
     exit 2
 }
 
 
+function list_existing_sessions() {
+    log "INFO" "Existing sessions..."
+    tmux ls
+}
+
+
+function session_exists() {
+    tmux has-session -t=$1 2>/dev/null
+}
+
+
+function load_session() {
+    printf "%s\n" "loading session $1"
+}
+
+
 function list () {
     if [ ! -d "${HOME}/${LAZARUS_DIR}" ]; then 
-        printf "%s\n" "Unable to list stored sessions: tmux directory $HOME/${LAZARUS_DIR} doesn't exist"
+        log "ERROR" "Unable to list stored sessions: tmux directory $HOME/${LAZARUS_DIR} doesn't exist"
         exit 2
     fi
 
-    printf "%s\n" "Available sessions..."
+    log "INFO" "Stored sessions..."
     for item in "${HOME}/${LAZARUS_DIR}/".*; do
         f="$(basename -- $item)"
         if [[ -f $item && $f = .lazarus* ]]; then
@@ -30,27 +51,50 @@ function list () {
 
 
 function save() {
-    printf "%s\n" "Saving session $1..."
-    echo $1 >> "${HOME}/${LAZARUS_DIR}/${LAZARUS_SESSION_LIST_FILE}"
+    if ! session_exists $1; then
+        log "ERROR" "Session $1 does not exist!"
+        list_existing_sessions
+        exit 2
+    fi
+
+    log "INFO" "Saving session $1..."
 }
 
 
 function restore() {
-    echo "restore"
-    echo $1
+    found=0
+    for item in "${HOME}/${LAZARUS_DIR}/".*; do
+        f="$(basename -- $item)"
+        if [[ -f $item && $f = .lazarus* ]]; then
+            IFS="_"
+            read -ra ARR <<< "$f"
+            if [ $1 == "${ARR[1]}" ]; then
+                found=1
+                break
+            fi
+            IFS=" "
+        fi
+    done  
+
+    if [ $found == 1 ]; then
+        load_session $1
+    else
+        log "ERROR" "Session $1 not found!"
+        list
+    fi
 }
 
 
 # MAIN
 if [ $# -lt 1 ]; then
-    printf "%s\n" "Missing command argument!"
+    log "ERROR" "Missing command argument!"
     usage
 fi 
 
 case $1 in
     save | restore )
         if [ $# -lt 2 ]; then 
-            printf "%s\n" "Missing session name"
+            log "ERROR" "Missing session name"
             usage
         fi
         $1 $2
@@ -61,7 +105,7 @@ case $1 in
         ;;
 
     * )
-        printf "%s\n" "Unknown option"
+        log "ERROR" "Unknown option"
         usage
         exit 2
 esac
