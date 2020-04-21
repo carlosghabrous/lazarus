@@ -28,8 +28,15 @@ function session_exists() {
 
 function load_session() {
     printf "%s\n" "loading session $1"
+    tmux start-server
+
 }
 
+
+function dump_session() {
+    tmux list-windows -t $1
+    tmux list-panes -s -t $1
+}
 
 function list () {
     if [ ! -d "${HOME}/${LAZARUS_DIR}" ]; then 
@@ -58,11 +65,12 @@ function save() {
     fi
 
     log "INFO" "Saving session $1..."
+    dump_session $1 > "${HOME}/${LAZARUS_DIR}/.lazarus_$1"
 }
 
 
 function restore() {
-    found=0
+    local found=0
     for item in "${HOME}/${LAZARUS_DIR}/".*; do
         f="$(basename -- $item)"
         if [[ -f $item && $f = .lazarus* ]]; then
@@ -81,6 +89,7 @@ function restore() {
     else
         log "ERROR" "Session $1 not found!"
         list
+        exit 2
     fi
 }
 
