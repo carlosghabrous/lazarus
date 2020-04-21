@@ -10,7 +10,7 @@ function log() {
 
 function usage() {
     printf "%s\n" "Usage:"
-    printf "\t%s\n" "lazarus <list|save|restore> [session_name]"
+    printf "\t%s\n" "lazarus <list_current|list_stored|save|restore> [session_name]"
     exit 2
 }
 
@@ -27,6 +27,11 @@ function session_exists() {
 
 
 function load_session() {
+    if session_exists $1; then
+        log "ERROR" "Session $1 exists already! Exiting..."
+        exit 2
+    fi 
+
     printf "%s\n" "loading session $1"
     tmux start-server
 
@@ -38,7 +43,13 @@ function dump_session() {
     tmux list-panes -s -t $1
 }
 
-function list () {
+function list_current() {
+    log "INFO" "Current sessions..."
+    printf "\t%s\n" "$(tmux list-sessions)"
+}
+
+
+function list_stored () {
     if [ ! -d "${HOME}/${LAZARUS_DIR}" ]; then 
         log "ERROR" "Unable to list stored sessions: tmux directory $HOME/${LAZARUS_DIR} doesn't exist"
         exit 2
@@ -109,7 +120,7 @@ case $1 in
         $1 $2
         ;;
 
-    list )
+    list_stored | list_current)
         $1
         ;;
 
