@@ -26,7 +26,7 @@ function session_exists() {
 
 
 function send_default_commands() {
-    log "INFO" "Sending default commands"
+    log "INFO" "Sending default commands for session $1, window $2"
 }
 
 
@@ -54,6 +54,7 @@ function load_session() {
 
             log "INFO" "create window ${window_name}"
             tmux -2 new-session -d -s $1 -n ${window_name}
+            send_default_commands ${session_name} ${window_name}
             current_window_name=${window_name}
         else
             if [[ ${current_window_name} == ${window_name} ]]; then
@@ -62,12 +63,12 @@ function load_session() {
                 log "INFO" "creating window ${window_name}"
                 tmux new-window -n ${window_name} -a -t ${current_window_name}
                 current_window_name=${window_name}
+                send_default_commands ${session_name} ${window_name}
             fi
         fi 
 
     done < "${LAZARUS_DIR}/lazarus_$1"
 
-    send_default_commands
     # tmux -2 attach -t ${session_name}
 }
 
