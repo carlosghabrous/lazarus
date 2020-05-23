@@ -1,6 +1,5 @@
 #!/bin/bash
-
-LAZARUS_DIR=".lazarus"
+LAZARUS_DIR=${HOME}/".lazarus"
 
 # FUNCTIONS
 function log() {
@@ -26,21 +25,56 @@ function session_exists() {
 }
 
 
+function send_default_commands() {
+    log "INFO" "Sending default commands"
+}
+
+
 function load_session() {
     if session_exists $1; then
-        log "ERROR" "Session $1 exists already! Exiting..."
+        log "ERROR" "Session $1 already loaded! Exiting..."
         exit 2
     fi 
 
     printf "%s\n" "loading session $1"
     tmux start-server
-    tmux new-session -s $1
+    
+    local session_created_already=0
+    local current_window_name=""
+
+    while IFS=$'\t' read session_name window_name window_layout pane_path; do
+        if [ ${session_name} != $1 ]; then
+            continue
+        fi 
+
+        # Found line with session to restore
+        if [ ${session_created_already} == 0 ]; then
+            log "INFO" "creating session $session_name"
+            session_created_already=1
+
+            log "INFO" "create window ${window_name}"
+            tmux -2 new-session -d -s $1 -n ${window_name}
+            current_window_name=${window_name}
+        else
+            if [[ ${current_window_name} == ${window_name} ]]; then
+                log "INFO" "same window as before: ${window_name}"
+            else
+                log "INFO" "creating window ${window_name}"
+                tmux new-window -n ${window_name} -a -t ${current_window_name}
+                current_window_name=${window_name}
+            fi
+        fi 
+
+    done < "${LAZARUS_DIR}/lazarus_$1"
+
+    send_default_commands
+    # tmux -2 attach -t ${session_name}
 }
 
 
 function dump_session() {
-    tmux list-windows -t $1
-    tmux list-panes -s -t $1
+    local d=$'\t'
+    tmux list-panes -s -t $1 -F "#S${d}#{window_name}${d}#{window_layout}${d}#{pane_current_path}#{client_activity}"
 }
 
 
@@ -58,15 +92,15 @@ function list_current() {
 
 
 function list_stored () {
-    if [ ! -d "${HOME}/${LAZARUS_DIR}" ]; then 
-        log "ERROR" "Unable to list stored sessions: tmux directory $HOME/${LAZARUS_DIR} doesn't exist"
+    if [ ! -d "${LAZARUS_DIR}" ]; then 
+        log "ERROR" "Unable to list stored sessions: tmux directory ${LAZARUS_DIR} doesn't exist"
         exit 2
     fi
 
     log "INFO" "Stored sessions..."
-    for item in "${HOME}/${LAZARUS_DIR}/".*; do
+    for item in "${LAZARUS_DIR}/".*; do
         f="$(basename -- $item)"
-        if [[ -f $item && $f = .lazarus* ]]; then
+        if [[ -f $item && $f = lazarus* ]]; then
             IFS="_"
             read -ra ARR <<< "$f"
             printf "\t%s %s\n" "->" "${ARR[1]}"
@@ -84,15 +118,15 @@ function save() {
     fi
 
     log "INFO" "Saving session $1..."
-    dump_session $1 > "${HOME}/${LAZARUS_DIR}/.lazarus_$1"
+    dump_session $1 > "${LAZARUS_DIR}/lazarus_$1"
 }
 
 
 function restore() {
     local found=0
-    for item in "${HOME}/${LAZARUS_DIR}/".*; do
+    for item in "${LAZARUS_DIR}/"*; do
         f="$(basename -- $item)"
-        if [[ -f $item && $f = .lazarus* ]]; then
+        if [[ -f $item && $f = lazarus* ]]; then
             IFS="_"
             read -ra ARR <<< "$f"
             if [ $1 == "${ARR[1]}" ]; then
@@ -107,7 +141,7 @@ function restore() {
         load_session $1
     else
         log "ERROR" "Session $1 not found!"
-        list
+        list_stored
         exit 2
     fi
 }
@@ -137,9 +171,4 @@ case $1 in
         usage
         exit 2
 esac
-
-
-
-# lazarus list
-# lazarus restore session_name
-# lazarus save session_name
+# EOF
