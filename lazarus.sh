@@ -53,12 +53,12 @@ function load_session() {
             session_created_already=1
 
             log "INFO" "create window ${window_name}"
-            tmux -2 new-session -d -s $1 -n ${window_name}
+            tmux -2 new-session -d -s $1 -n ${window_name} -c ${pane_path}
             send_default_commands ${session_name} ${window_name}
             current_window_name=${window_name}
         else
             if [[ ${current_window_name} == ${window_name} ]]; then
-                log "INFO" "same window as before: ${window_name}"
+                log "INFO" "same window as before: ${window_name}, path ${pane_path}"
             else
                 log "INFO" "creating window ${window_name}"
                 tmux new-window -n ${window_name} -a -t ${current_window_name}
@@ -74,7 +74,7 @@ function load_session() {
 
 function dump_session() {
     local d=$'\t'
-    tmux list-panes -s -t $1 -F "#S${d}#{window_name}${d}#{window_layout}${d}#{pane_current_path}#{client_activity}"
+    tmux list-panes -s -t $1 -F "#S${d}#{window_name}${d}#{window_layout}${d}#{pane_current_path}${d}"
 }
 
 
