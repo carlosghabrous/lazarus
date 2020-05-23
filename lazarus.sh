@@ -68,8 +68,7 @@ function load_session() {
         fi 
 
     done < "${LAZARUS_DIR}/lazarus_$1"
-
-    # tmux -2 attach -t ${session_name}
+    tmux -2 attach -t $1
 }
 
 
